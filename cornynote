@@ -5,12 +5,15 @@ import argparse
 import os
 from tabulate import tabulate
 import plumbum
+import textwrap
 
 # All nodes
 # Each node has the string answer, string question, string array examples,
 # and stirng array tags
 nodes = []
 names = []
+
+doWarnings = True
 
 parseOptions = ['>>question', '>>answer', '>>example']
 
@@ -70,8 +73,17 @@ def addFile(file):
 
 parser = argparse.ArgumentParser(description='Look up formatted cornell notes')
 parser.add_argument('files', metavar='F', nargs='+', help='Folders or files containing entries')
+parser.add_argument('-q' , action='store_true', help='Supress warnings')
+parser.add_argument('-a' , action='store_true', help='Only print answer (ignores -e)')
+parser.add_argument('-e' , type=int, default=-1, help='Print only example X')
 
 args = parser.parse_args()
+
+doWarnings = args.q
+onlyExample = args.e
+onlyAnswer = args.a
+
+print(doWarnings)
 
 for f in args.files:
     if os.path.exists(f):
@@ -102,10 +114,18 @@ else:
             # print(">> QUESTION -------------------------\n%s\n>> ANSWER --------------------------\n%s\n" % (n[0], n[1]))
             # for i in range(2, len(n)):
                 # print(">> EXAMPLE #%i -------------------------\n%s\n" % (i - 1, n[i]))
-            rows = [["Question", n[0]], ["Answer", n[1]]]
-            for i in range(2, len(n)):
-                rows.append(["Example #%i" % (i - 1), n[i]])
-            print(tabulate(rows, tablefmt="grid"))
+            # for i in range(0, len(n)):
+                # n[i] = textwrap.fill(n[i])
+
+            if onlyAnswer:
+                print(n[1])
+            elif onlyExample != -1:
+                print(n[1 + onlyExample])
+            else:
+                rows = [["Question", n[0]], ["Answer", n[1]]]
+                for i in range(2, len(n)):
+                    rows.append(["Example #%i" % (i - 1), n[i]])
+                print(tabulate(rows, tablefmt="grid"))
     except plumbum.commands.processes.ProcessExecutionError:
         print('Exit, subprocess failed.')
 
