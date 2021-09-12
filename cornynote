@@ -15,28 +15,19 @@ names = []
 
 doWarnings = True
 
-parseOptions = ['>>question', '>>answer', '>>example']
+parseOptions = ['>>q', '>>a', '>>e']
 
 def warn(msg):
     print('Warning: %s' % (msg))
 
 def getControl(line):
     global parseOptions
-    best = 0
-    bestIndex = -1
+    # Remove newline
+    tline = line[:-1]
     for d in range(0, len(parseOptions)):
-        o = parseOptions[d]
-        if (len(o) < len(line)):
-            break
-        current = 0
-        for i in range(0, len(line)):
-            if line[i] != o[i]:
-                current = i
-                break
-        if current > best:
-            best = current
-            bestIndex = d
-    return bestIndex
+        if tline == parseOptions[d]:
+            return d
+    return -1 
 
 def addFile(file):
     global nodes
