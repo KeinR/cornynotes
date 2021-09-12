@@ -1,0 +1,116 @@
+#!/usr/bin/python3
+
+from pyfzf.pyfzf import FzfPrompt
+import argparse
+import os
+from tabulate import tabulate
+import plumbum
+
+# All nodes
+# Each node has the string answer, string question, string array examples,
+# and stirng array tags
+nodes = []
+names = []
+
+parseOptions = ['>>question', '>>answer', '>>example']
+
+def warn(msg):
+    print('Warning: %s' % (msg))
+
+def getControl(line):
+    global parseOptions
+    best = 0
+    bestIndex = -1
+    for d in range(0, len(parseOptions)):
+        o = parseOptions[d]
+        if (len(o) < len(line)):
+            break
+        current = 0
+        for i in range(0, len(line)):
+            if line[i] != o[i]:
+                current = i
+                break
+        if current > best:
+            best = current
+            bestIndex = d
+    return bestIndex
+
+def addFile(file):
+    global nodes
+    global names
+    with open(file, 'r') as f:
+        data = None
+        state = -1
+        for line in f:
+            cmd = getControl(line)
+            if cmd == -1 and state == -1:
+                continue
+            if cmd == 0:
+                if data != None:
+                    nodes.append(data)
+                data = [""]
+                state = cmd
+            elif cmd != -1 and (cmd > state or cmd == 2):
+                data.append("")
+                state = cmd
+            elif data != None:
+                data[-1] += line
+        o = data[0]
+        n = ''
+        for c in o:
+            if c == '\n':
+                n += ' '
+            else:
+                n += c
+        data[0] = n
+        nodes.append(data)
+        names.append(data[0])
+
+
+
+parser = argparse.ArgumentParser(description='Look up formatted cornell notes')
+parser.add_argument('files', metavar='F', nargs='+', help='Folders or files containing entries')
+
+args = parser.parse_args()
+
+for f in args.files:
+    if os.path.exists(f):
+        if os.path.isdir(f):
+            for subdir, dirs, files in os.walk(args.folder):
+                for nf in files:
+                    addFile(nf)
+        else:
+            addFile(f)
+    else:
+        warn('File %s does not exist!' % (f))
+
+
+if len(names) == 0:
+    print('No data...')
+else:
+    fzf = FzfPrompt()
+    try:
+        sel = fzf.prompt(names)
+        n = None
+        for e in nodes:
+            if e[0] == sel[0]:
+                n = e
+                break
+        if n == None:
+            print("Something weird happened, hold on...")
+        else:
+            # print(">> QUESTION -------------------------\n%s\n>> ANSWER --------------------------\n%s\n" % (n[0], n[1]))
+            # for i in range(2, len(n)):
+                # print(">> EXAMPLE #%i -------------------------\n%s\n" % (i - 1, n[i]))
+            rows = [["Question", n[0]], ["Answer", n[1]]]
+            for i in range(2, len(n)):
+                rows.append(["Example #%i" % (i - 1), n[i]])
+            print(tabulate(rows, tablefmt="grid"))
+    except plumbum.commands.processes.ProcessExecutionError:
+        print('Exit, subprocess failed.')
+
+
+
+
+
+
